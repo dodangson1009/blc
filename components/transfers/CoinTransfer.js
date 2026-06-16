@@ -1,88 +1,68 @@
-import React from 'react'
-import { useEffect, useState } from 'react';
-import { useMoralis, useNativeBalance } from 'react-moralis';
-import AssetSelector from './AssetSelector';
+import React, { useState } from 'react'
+import Toast from '../Toast'
+import ConfirmModal from '../ConfirmModal'
 
 export default function CoinTransfer() {
+    const [receiver, setReceiver] = useState('')
+    const [amount, setAmount] = useState('')
+    const [showConfirm, setShowConfirm] = useState(false)
+    const [toast, setToast] = useState({ visible: false, message: '', type: 'info' })
 
-    const { Moralis } = useMoralis();
-    const [receiver, setReceiver] = useState();
-    const [asset, setAsset] = useState();
-    const [tx, setTx] = useState();
-    const [amount, setAmount] = useState();
-    const [isPending, setIsPending] = useState(false);
-
-    const { data } = useNativeBalance();
-
-    console.log("DATAFFFFFFFFFFFFFFFFFFFFFFFFFFFFf", data);
-
-    async function transfer() {
-        const { amount, receiver, asset } = tx;
-
-        let options = {};
-
-        switch (asset.token_address) {
-            case "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee":
-                options = {
-                    native: "native",
-                    amount: Moralis.Units.ETH(amount),
-                    receiver,
-                    awaitReceipt: false,
-                };
-                break;
-            default:
-                options = {
-                    type: "erc20",
-                    amount: Moralis.Units.Token(amount, asset.decimals),
-                    receiver,
-                    contractAddress: asset.token_address,
-                    awaitReceipt: false,
-                };
-        }
-
-        setIsPending(true);
-        const txStatus = await Moralis.transfer(options);
-
-        txStatus
-            .on("transactionHash", (hash) => {
-                openNotification({
-                    message: "🔊 New Transaction",
-                    description: `${hash}`,
-                });
-                console.log("🔊 New Transaction", hash);
-            })
-            .on("receipt", (receipt) => {
-                openNotification({
-                    message: "📃 New Receipt",
-                    description: `${receipt.transactionHash}`,
-                });
-                console.log("🔊 New Receipt: ", receipt);
-                setIsPending(false);
-            })
-            .on("error", (error) => {
-                openNotification({
-                    message: "📃 Error",
-                    description: `${error.message}`,
-                });
-                console.error(error);
-                setIsPending(false);
-            });
+    const handleTransfer = () => {
+        setShowConfirm(true)
     }
 
-    useEffect(() => {
-        asset && amount && receiver ? setTx({ amount, receiver, asset }) : setTx();
-    }, [asset, amount, receiver]);
+    const confirmTransfer = () => {
+        setShowConfirm(false)
+        setToast({ visible: true, message: 'Transfer features are temporarily unavailable', type: 'info' })
+    }
 
     return (
-        <div>
-            <input placeholder='select Token' />
-            <p>Show Balance:</p>
-            <input type="number" placeholder='amount' value={amount} onChange={(e) => setAmount(e.target.value)} />
-            <p>To:</p>
-            <input placeholder='address' value={receiver} onChange={(e) => setReceiver(e.target.value)} />
+        <div className="space-y-4">
+            <div className="space-y-3">
+                <input
+                    className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] text-white text-sm outline-none focus:border-[#6188FF]/50 transition-colors"
+                    placeholder="Select Token"
+                />
+                <p className="text-xs text-gray-500">Show Balance:</p>
+                <input
+                    type="number"
+                    className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] text-white text-sm outline-none focus:border-[#6188FF]/50 transition-colors"
+                    placeholder="Amount"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                />
+                <p className="text-xs text-gray-500">To:</p>
+                <input
+                    className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] text-white text-sm outline-none focus:border-[#6188FF]/50 transition-colors"
+                    placeholder="Address"
+                    value={receiver}
+                    onChange={(e) => setReceiver(e.target.value)}
+                />
+            </div>
+            <button
+                onClick={handleTransfer}
+                className="w-full px-5 py-3 bg-[#6188FF] text-white rounded-xl text-sm font-semibold hover:bg-[#5178e8] transition-colors"
+            >
+                Transfer
+            </button>
 
-            <button onClick={transfer}>Transfer</button>
-            <AssetSelector />
+            <ConfirmModal
+                isOpen={showConfirm}
+                onClose={() => setShowConfirm(false)}
+                onConfirm={confirmTransfer}
+                title="Confirm Transfer"
+                description="Transfer features are temporarily unavailable. This feature will be available soon."
+                confirmText="Understood"
+                variant="info"
+            />
+
+            <Toast
+                message={toast.message}
+                type={toast.type}
+                visible={toast.visible}
+                onClose={() => setToast({ ...toast, visible: false })}
+            />
         </div>
     )
 }

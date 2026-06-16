@@ -1,89 +1,68 @@
-import React from "react";
-import { useMoralis, useWeb3Transfer, useMoralisWeb3Api } from "react-moralis";
-import { useEffect, useState } from "react";
+import React, { useState } from "react";
+import Toast from '../Toast'
+import ConfirmModal from '../ConfirmModal'
 
 const TransferEth = () => {
-    const { Moralis, user, account, isAuthenticated } = useMoralis();
-    const Web3Api = useMoralisWeb3Api();
-
     const [amount, setAmount] = useState('0');
-    const [receiver, setReceiver] = useState();
+    const [receiver, setReceiver] = useState('');
+    const [showConfirm, setShowConfirm] = useState(false);
+    const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
 
-    const { fetch, error, isFetching } = useWeb3Transfer({
-        type: "native",
-        amount: amount !== '' ? Moralis.Units.ETH(parseFloat(amount)) : Moralis.Units.ETH(parseFloat('0.1')),
-        receiver: receiver
-    });
-
-    useEffect(() => {
-
-        Moralis.enableWeb3()
-
-        test()
-
-        // Moralis.Cloud.HTTPOptions.baseURL = 'https://api.moralis.io/v1/';
-
-        // const balance = await Moralis.Web3API.account.getNativeBalance();
-
-    }, [Moralis])
-
-    console.log(error)
-
-    if (isAuthenticated) {
-
-        // fetchNativeBalance('bsc', user.get("ethAddress"))
+    const handleTransfer = () => {
+        setShowConfirm(true);
     }
 
-    const test = async () => {
-
-        console.warn("makng call..")
-
-        try {
-
-            /**
-             * https://forum.moralis.io/t/is-it-possible-to-use-cloud-code-to-transfer-erc20-tokens/6757
-             * you can not use that method from a cloud function, 
-             * mainly because you don’t have access to a wallet in a cloud function, 
-             * you could still do a transfer in a cloud function, 
-             * but you’ll have to write your own code and to hardcode a private key
-             */
-
-            await Moralis.start({
-                appId: "UHl1r17lBIzihxHTi3egHrHP2WSK9Z1Bu4P7pWsK",
-                serverUrl: "https://xe78hpdwyjsp.usemoralis.com:2053/server"
-            })
-
-            await Moralis.Cloud.run("sendEth").then(async (data) => {
-
-                console.log("data >>> ", data)
-            })
-        }
-
-        catch (e) {
-
-            return ("error >>> ", e.message)
-        }
+    const confirmTransfer = () => {
+        setShowConfirm(false);
+        setToast({ visible: true, message: 'Transfer features are temporarily unavailable', type: 'info' });
     }
 
-    // Use your custom error component to show errors
     return (
-        <div>
-            <div>
-                <input placeholder='select Token' />
-                <p>Show Balance:</p>
-                <input type="number" placeholder='amount' value={amount} onChange={(e) => setAmount(e.target.value)} />
-                <p>To:</p>
-                <input placeholder='address' value={receiver} onChange={(e) => setReceiver(e.target.value)} />
-
-                {/* <button onClick={transfer}>Transfer</button> */}
-                {/* <AssetSelector /> */}
-
-
-
+        <div className="space-y-4">
+            <div className="space-y-3">
+                <input
+                    className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] text-white text-sm outline-none focus:border-[#6188FF]/50 transition-colors"
+                    placeholder="Select Token"
+                />
+                <p className="text-xs text-gray-500">Show Balance:</p>
+                <input
+                    type="number"
+                    className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] text-white text-sm outline-none focus:border-[#6188FF]/50 transition-colors"
+                    placeholder="Amount"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                />
+                <p className="text-xs text-gray-500">To:</p>
+                <input
+                    className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] text-white text-sm outline-none focus:border-[#6188FF]/50 transition-colors"
+                    placeholder="Address"
+                    value={receiver}
+                    onChange={(e) => setReceiver(e.target.value)}
+                />
             </div>
-            <button onClick={() => fetch()} disabled={isFetching}>
+            <button
+                onClick={handleTransfer}
+                className="w-full px-5 py-3 bg-[#6188FF] text-white rounded-xl text-sm font-semibold hover:bg-[#5178e8] transition-colors"
+            >
                 Transfer
             </button>
+
+            <ConfirmModal
+                isOpen={showConfirm}
+                onClose={() => setShowConfirm(false)}
+                onConfirm={confirmTransfer}
+                title="Confirm Transfer"
+                description="Transfer features are temporarily unavailable. This feature will be available soon."
+                confirmText="Understood"
+                variant="info"
+            />
+
+            <Toast
+                message={toast.message}
+                type={toast.type}
+                visible={toast.visible}
+                onClose={() => setToast({ ...toast, visible: false })}
+            />
         </div>
     );
 };

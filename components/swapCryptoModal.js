@@ -1,13 +1,30 @@
-import { useContext } from 'react'
+import { useState, useContext } from 'react'
+import Modal, { ModalButton } from './Modal'
 import { CoinMarketContext } from '../context/context'
 
 const styles = {
-  modal: `w-screen h-screen bg-gray-900/90 z-10 fixed top-0 left-0 flex items-center justify-center`,
-  modalContent: `bg-white rounded-lg p-3 w-max w-1/3`,
-  input: `w-full p-2 border rounded-lg mb-5 border-gray-600/50 outline-none`,
-  button: `bg-[#6188FF] p-2 px-5 rounded-lg text-white hover:opacity-50`,
-  label: `font-bold text-3xl`,
-  closeModalButton: `hover:text-red-300 text-gray-600 cursor-pointer`,
+  swapIcon: `
+    flex items-center justify-center w-10 h-10 rounded-full
+    bg-white/[0.05] border border-white/[0.08] mx-auto -my-1
+    relative z-10 hover:bg-[#6188FF]/10 hover:border-[#6188FF]/30
+    transition-all duration-200 cursor-pointer rotate-0 hover:rotate-180
+  `,
+  tokenSelect: `
+    w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08]
+    text-white text-sm outline-none cursor-pointer appearance-none
+    focus:border-[#6188FF]/50 transition-colors duration-200
+    hover:border-white/15
+    [&>option]:bg-[#0f172a] [&>option]:text-white
+  `,
+  amountInput: `
+    w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08]
+    text-white text-lg font-semibold outline-none
+    focus:border-[#6188FF]/50 transition-colors duration-200
+    placeholder:text-gray-600
+  `,
+  tokenGroup: 'space-y-2',
+  tokenLabel: 'text-xs text-gray-500 font-medium uppercase tracking-wider',
+  rateInfo: 'text-center text-xs text-gray-500 py-1',
 }
 
 const SwapCryptoModal = () => {
@@ -25,85 +42,108 @@ const SwapCryptoModal = () => {
     setToToken,
   } = useContext(CoinMarketContext)
 
-  if (openBuyCryptoModal)
-    return (
-      <div className={styles.modal}>
-        <div className={styles.modalContent}>
-          <div className='flex items-center justify-between'>
-            <p className={styles.label}>Swap your crypto</p>
-            <p
-              className={styles.closeModalButton}
-              onClick={() => {
-                setOpenBuyCryptoModal(false)
-                setAmount(0)
-                setFromToken('')
-                setToToken('')
-              }}
-            >
-              close &times;
-            </p>
-          </div>
-          <div className='mb-5' />
-          <label htmlFor='fromToken' className='block mb-2 ml-2'>
-            From
-          </label>
-          <select
-            name='fromToken'
-            className={styles.input}
-            placeholder='Token to swap'
-            onChange={e => setFromToken(e.target.value)}
-            value={fromToken}
-          >
-            {coins.map(coin => {
-              if (!loadingCoins) {
-                return (
-                  <option key={coin.id} value={coin.attributes.name}>
-                    {coin.attributes.name}
-                  </option>
-                )
-              }
-            })}
-            <option value='ETH'>ETH</option>
-          </select>
-          <label htmlFor='fromToken' className='block mb-2 ml-2'>
-            To
-          </label>
-          <select
-            name='toToken'
-            className={styles.input}
-            placeholder='Token to swap'
-            onChange={e => setToToken(e.target.value)}
-            value={toToken}
-          >
-            {coins.map(coin => {
-              if (!loadingCoins) {
-                return (
-                  <option key={coin.id} value={coin.attributes.name}>
-                    {coin.attributes.name}
-                  </option>
-                )
-              }
-            })}
-          </select>
-          <label htmlFor='amount' className='block mb-2 ml-2'>
-            Amount
-          </label>
-          <input
-            name='amount'
-            className={styles.input}
-            placeholder='Token to swap'
-            value={amount}
-            onChange={e => setAmount(e.target.value)}
-          />
+  const [swapping, setSwapping] = useState(false)
 
-          <button className={styles.button} onClick={mint}>
-            Swap!
-          </button>
+  const handleClose = () => {
+    setOpenBuyCryptoModal(false)
+    setAmount(0)
+    setFromToken('')
+    setToToken('')
+  }
+
+  const handleSwap = async () => {
+    setSwapping(true)
+    try {
+      await mint()
+      handleClose()
+    } catch (err) {
+      console.error('Swap failed:', err)
+    } finally {
+      setSwapping(false)
+    }
+  }
+
+  return (
+    <Modal
+      isOpen={openBuyCryptoModal}
+      onClose={handleClose}
+      title="Swap Tokens"
+      subtitle="Exchange tokens on testnet"
+      size="sm"
+      footer={
+        <div className="flex gap-3 w-full">
+          <ModalButton variant="secondary" onClick={handleClose} className="flex-1">
+            Cancel
+          </ModalButton>
+          <ModalButton
+            variant="primary"
+            onClick={handleSwap}
+            disabled={!fromToken || !toToken || !amount || swapping}
+            className="flex-1"
+          >
+            {swapping ? 'Swapping...' : 'Swap'}
+          </ModalButton>
         </div>
-      </div>
-    )
+      }
+    >
+      <div className="space-y-4">
+        <div className={styles.tokenGroup}>
+          <label className={styles.tokenLabel}>From</label>
+          <select
+            className={styles.tokenSelect}
+            value={fromToken}
+            onChange={(e) => setFromToken(e.target.value)}
+          >
+            <option value="">Select token</option>
+            {coins && coins.map((coin) => (
+              <option key={coin.id} value={coin.attributes.name}>
+                {coin.attributes.name}
+              </option>
+            ))}
+            <option value="ETH">ETH</option>
+          </select>
+        </div>
 
-  return <></>
+        <div className={styles.swapIcon}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6188FF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <polyline points="19 12 12 19 5 12" />
+          </svg>
+        </div>
+
+        <div className={styles.tokenGroup}>
+          <label className={styles.tokenLabel}>To</label>
+          <select
+            className={styles.tokenSelect}
+            value={toToken}
+            onChange={(e) => setToToken(e.target.value)}
+          >
+            <option value="">Select token</option>
+            {coins && coins.map((coin) => (
+              <option key={coin.id} value={coin.attributes.name}>
+                {coin.attributes.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className={styles.tokenGroup}>
+          <label className={styles.tokenLabel}>Amount</label>
+          <input
+            type="number"
+            className={styles.amountInput}
+            placeholder="0.00"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            min="0"
+            step="0.01"
+          />
+        </div>
+
+        <p className={styles.rateInfo}>Swaps are executed on testnet with no real value</p>
+      </div>
+    </Modal>
+  )
 }
 
 export default SwapCryptoModal

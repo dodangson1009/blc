@@ -1,105 +1,139 @@
-import CMCpriceConverter from '../../components/priceConverter'
-
 import Header from '../../components/header'
-import solana from '../../assets/solana.png'
-import Usd from '../../assets/svg/usd'
+import HeroSection from '../../components/coin-detail/HeroSection'
+import PriceChart from '../../components/coin-detail/PriceChart'
+import PricePerformance from '../../components/coin-detail/PricePerformance'
+import MarketStatistics from '../../components/coin-detail/MarketStatistics'
+import AboutCoin from '../../components/coin-detail/AboutCoin'
+import ContractInfo from '../../components/coin-detail/ContractInfo'
+import SimilarCoins from '../../components/coin-detail/SimilarCoins'
+import RecentViewed from '../../components/coin-detail/RecentViewed'
+import { HeroSkeleton, ChartSkeleton, StatsSkeleton, SidebarSkeleton } from '../../components/coin-detail/SkeletonLoader'
 import { useEffect, useState } from 'react'
-import Graph from '../../components/graph'
-import Chat from '../../components/chat'
+
+const COIN_ID_MAP = {
+  'bitcoin': 'bitcoin', 'ethereum': 'ethereum', 'tether': 'tether',
+  'binancecoin': 'binancecoin', 'usd-coin': 'usd-coin', 'ripple': 'ripple',
+  'cardano': 'cardano', 'solana': 'solana', 'polkadot': 'polkadot',
+  'avalanche-2': 'avalanche-2', 'dogecoin': 'dogecoin', 'tron': 'tron',
+}
 
 const styles = {
-  activeTab: `p-1 px-2 mr-2 rounded-lg bg-[#171924]`,
-  tabItem: `px-2`,
-  tabContainer: `flex items-center p-2 rounded-xl bg-[#222531] border border-gray-500/10 text-sm`,
-  info: `min-h-screen`,
-  main: `text-white mx-auto max-w-screen-2xl`,
-  flexStart: `flex items-start`,
-  flexBetween: `flex justify-between`,
-  flexBetweenCenter: `flex justify-between items-center`,
-  tabContainerWrapper: `p-10 pl-0 pr-0 w-2/3`,
-  flexCenter: `flex items-center`,
+  page: `min-h-screen bg-[#0e0e12]`,
+  container: `max-w-[1280px] mx-auto px-4 md:px-6 py-6 md:py-10`,
+  layout: `flex flex-col lg:flex-row gap-6`,
+  main: `flex-1 min-w-0`,
+  sidebar: `w-full lg:w-[380px] flex-shrink-0 space-y-6`,
+  error: `flex flex-col items-center justify-center min-h-[60vh] text-center`,
+  errorIcon: `w-16 h-16 rounded-full bg-[#ea3943]/10 flex items-center justify-center mb-4`,
+  errorTitle: `text-xl font-bold text-white mb-2`,
+  errorText: `text-gray-400 text-sm mb-6`,
+  retryBtn: `px-6 py-2.5 bg-[#6188FF] text-white rounded-xl font-semibold hover:opacity-90 transition-opacity`,
 }
 
 const Currencies = () => {
-  const [coinName, setCoinName] = useState('')
-  const [coinSymbol, setCoinSymbol] = useState('')
-  const [price, setPrice] = useState('')
+  const [coinData, setCoinData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [isMockData, setIsMockData] = useState(false)
+  const [coinId] = useState(() => {
+    if (typeof window === 'undefined') return 'bitcoin'
+    const urlParams = new URLSearchParams(window.location.search)
+    const coinName = urlParams.get('coin')?.toLowerCase() || 'bitcoin'
+    return COIN_ID_MAP[coinName] || coinName
+  })
 
   useEffect(() => {
-    getData()
-  }, [])
+    if (!coinId) return
+    fetchCoinData()
+  }, [coinId])
 
-  const getData = async () => {
-    const queryString = window.location.search
-    const urlParams = new URLSearchParams(queryString)
+  const fetchCoinData = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const res = await fetch(`/api/getCoinDetail?id=${coinId}`)
+      const json = await res.json()
+      setIsMockData(!!json.mock)
+      if (json.data) {
+        setCoinData(json.data)
+        try {
+          const recent = JSON.parse(localStorage.getItem('recentlyViewed') || '[]')
+          const entry = { name: json.data.name, symbol: json.data.symbol, price: json.data.market_data?.current_price?.usd, image: json.data.image?.small || json.data.image?.large || '' }
+          const updated = [entry, ...recent.filter(r => r.name !== entry.name)].slice(0, 10)
+          localStorage.setItem('recentlyViewed', JSON.stringify(updated))
+        } catch {}
+      } else {
+        setError('Coin not found')
+      }
+    } catch (err) {
+      setError('Unable to load coin information. Please try again later.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
-    setCoinName(urlParams.get('coin'))
-    setPrice(Number(urlParams.get('price')).toLocaleString())
-    setCoinSymbol(urlParams.get('symbol'))
+  if (loading) {
+    return (
+      <div className={styles.page}>
+        <Header />
+        <div className={styles.container}>
+          <HeroSkeleton />
+          <div className={styles.layout}>
+            <div className={styles.main}>
+              <ChartSkeleton />
+              <StatsSkeleton />
+            </div>
+            <div className={styles.sidebar}>
+              <SidebarSkeleton />
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className={styles.page}>
+        <Header />
+        <div className={styles.container}>
+          <div className={styles.error}>
+            <div className={styles.errorIcon}>
+              <svg width='32' height='32' viewBox='0 0 24 24' fill='none' stroke='#ea3943' strokeWidth='2'><circle cx='12' cy='12' r='10' /><line x1='12' y1='8' x2='12' y2='12' /><line x1='12' y1='16' x2='12.01' y2='16' /></svg>
+            </div>
+            <h2 className={styles.errorTitle}>Something went wrong</h2>
+            <p className={styles.errorText}>{error}</p>
+            <button className={styles.retryBtn} onClick={fetchCoinData}>Try Again</button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className={styles.info}>
+    <div className={styles.page}>
       <Header />
-      <main className={styles.main}>
-        <div className={styles.flexStart}>
-          <div className={styles.tabContainerWrapper}>
-            <div className={styles.flexBetween}>
-              <div className={styles.tabContainer}>
-                <p className={styles.activeTab}>Price</p>
-                <p className={styles.tabItem}>Market Cap</p>
-                <p className={styles.tabItem}>Trading View</p>
-                <p className={styles.tabItem}>History</p>
-              </div>
-
-              <div className={styles.tabContainer}>
-                <p className={styles.activeTab}>1D</p>
-                <p className={styles.tabItem}>2D</p>
-                <p className={styles.tabItem}>1M</p>
-                <p className={styles.tabItem}>3M</p>
-                <p className={styles.tabItem}>1Y</p>
-                <p className={styles.tabItem}>YTD</p>
-                <p className={styles.tabItem}>ALL</p>
-                <p className={styles.tabItem}>LOG</p>
-              </div>
-            </div>
-            <br />
-            <Graph />
-            <br />
-            <div className={styles.flexBetweenCenter}>
-              <div className='flex'>
-                <div className={styles.flexCenter}>
-                  <input className='outline-none' type='checkbox' /> &nbsp; USD
-                </div>
-                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                <div className={styles.flexCenter}>
-                  <input type='checkbox' /> &nbsp; BTC
-                </div>
-              </div>
-
-              <p>
-                Want more data?{' '}
-                <span className='text-[#6188FF]'>Check out our API</span>
-              </p>
-            </div>
-            <br />
-            <br />
-            <CMCpriceConverter
-              from={coinName}
-              fromSymbol={coinSymbol}
-              fromLogo={solana}
-              toLogo={<Usd />}
-              price={price}
-              to='United States Dollars'
-              toSymbol='USD'
-            />
+      <div className={styles.container}>
+        {isMockData && (
+          <div className='bg-[#f0b90b]/10 border border-[#f0b90b]/30 rounded-xl px-4 py-2.5 mb-6 text-[#f0b90b] text-sm text-center font-medium'>
+            ⚠️ Displaying test data — no live API connection. Prices are not real-time.
           </div>
-
-          <div className='pt-10 ml-5'>
-            <Chat />
+        )}
+        <div className={styles.layout}>
+          <div className={styles.main}>
+            <HeroSection coinData={coinData} />
+            <PriceChart coinId={coinId} />
+            <PricePerformance coinData={coinData} />
+            <MarketStatistics coinData={coinData} />
+            <AboutCoin coinData={coinData} />
+          </div>
+          <div className={styles.sidebar}>
+            <ContractInfo coinData={coinData} />
+            <SimilarCoins coinId={coinId} />
+            <RecentViewed />
           </div>
         </div>
-      </main>
+      </div>
     </div>
   )
 }

@@ -1,5 +1,5 @@
-import { useContext } from 'react'
 import Image from 'next/image'
+import { useRouter } from 'next/router'
 import btc from '../assets/btc.png'
 import eth from '../assets/eth.png'
 import usdc from '../assets/usdc.png'
@@ -11,157 +11,60 @@ import solana from '../assets/solana.png'
 import avalanche from '../assets/avalanche.png'
 import bnb from '../assets/bnb.png'
 
-import { CoinMarketContext } from '../context/context'
-
 const styles = {
   coinNameRow: 'flex items-center',
-  buyButton: `bg-[#1A1F3A] text-[#6188FF] p-1 px-3 text-sm rounded-lg cursor-pointer hover:opacity-50`,
+  buyButton: `bg-[#16c784]/15 text-[#16c784] px-2.5 py-1 text-xs font-semibold rounded-lg cursor-pointer hover:bg-[#16c784]/25 transition-all border border-[#16c784]/20`,
+}
+
+const ICON_MAP = {
+  'Bitcoin': btc,
+  'Ethereum': eth,
+  'Tether': usdt,
+  'BNB': bnb,
+  'USD Coin': usdc,
+  'XRP': xrp,
+  'Cardano': cardano,
+  'Terra': tera,
+  'Solana': solana,
+  'Avalanche': avalanche,
 }
 
 const CoinNameRow = ({ name, icon, clicked }) => {
-  const { openModal } = useContext(CoinMarketContext)
+  const router = useRouter()
 
-  const coinIcon = () => {
-    switch (name) {
-      case 'Bitcoin':
-        return (
-          <Image
-            src={btc}
-            className='rounded-full'
-            width={20}
-            height={20}
-            alt=''
-          />
-        )
+  const handleBuy = (e) => {
+    e.stopPropagation()
+    const coinId = name?.toLowerCase() || 'bitcoin'
+    router.push(`/buy?coin=${coinId}`)
+  }
 
-      case 'Ethereum':
-        return (
-          <Image
-            src={eth}
-            className='rounded-full'
-            width={20}
-            height={20}
-            alt=''
-          />
-        )
-
-      case 'Tether':
-        return (
-          <Image
-            src={usdt}
-            className='rounded-full'
-            width={20}
-            height={20}
-            alt=''
-          />
-        )
-
-      case 'BNB':
-        return (
-          <Image
-            src={bnb}
-            className='rounded-full'
-            width={20}
-            height={20}
-            alt=''
-          />
-        )
-
-      case 'USD Coin':
-        return (
-          <Image
-            src={usdc}
-            className='rounded-full'
-            width={20}
-            height={20}
-            alt=''
-          />
-        )
-
-      case 'XRP':
-        return (
-          <Image
-            src={xrp}
-            className='rounded-full'
-            width={20}
-            height={20}
-            alt=''
-          />
-        )
-
-      case 'Cardano':
-        return (
-          <Image
-            src={cardano}
-            className='rounded-full'
-            width={20}
-            height={20}
-            alt=''
-          />
-        )
-
-      case 'Terra':
-        return (
-          <Image
-            src={tera}
-            className='rounded-full'
-            width={20}
-            height={20}
-            alt=''
-          />
-        )
-
-      case 'Solana':
-        return (
-          <Image
-            src={solana}
-            className='rounded-full'
-            width={20}
-            height={20}
-            alt=''
-          />
-        )
-
-      case 'Avalanche':
-        return (
-          <Image
-            src={avalanche}
-            className='rounded-full'
-            width={20}
-            height={20}
-            alt=''
-          />
-        )
-
-      default:
-        return (
-          <Image
-            src={btc}
-            className='rounded-full'
-            width={20}
-            height={20}
-            alt=''
-          />
-        )
+  const getIcon = () => {
+    const localIcon = ICON_MAP[name]
+    if (localIcon) {
+      return <Image src={localIcon} className='rounded-full' width={20} height={20} alt='' />
     }
+    // Fallback: use the API-provided icon URL
+    if (icon) {
+      return <img src={icon} className='w-5 h-5 rounded-full' alt='' unoptimized />
+    }
+    // Last fallback: show first 2 letters of name
+    return (
+      <div className='w-5 h-5 rounded-full bg-[#6188FF]/20 flex items-center justify-center text-[#6188FF] text-[10px] font-bold'>
+        {(name || '?').slice(0, 2)}
+      </div>
+    )
   }
 
   return (
     <div className={styles.coinNameRow}>
-      <div className='mr-3 flex' onClick={clicked}>
-        <div className='mr-2'>{coinIcon()}</div>
+      <div className='mr-3 flex items-center' onClick={clicked}>
+        <div className='mr-2'>{getIcon()}</div>
         {name}
       </div>
 
-      <p>
-        {name === 'Bitcoin' || name === 'Ethereum' || name === 'Tether' ? (
-          <span className={styles.buyButton} onClick={() => openModal()}>
-            Buy
-          </span>
-        ) : (
-          <></>
-        )}
-      </p>
+      <span className={styles.buyButton} onClick={handleBuy}>
+        Buy
+      </span>
     </div>
   )
 }

@@ -7,6 +7,7 @@ import ChatCard from './chatCard'
 import Button from './button'
 import shiba from '../assets/shiba.png'
 import Image from 'next/image'
+import Toast from './Toast'
 
 const styles = {
   bullishLabel: `flex cursor-pointer active:bg-green-600 items-center text text-green-600 border border-green-600 h-min px-2 rounded-lg`,
@@ -26,14 +27,19 @@ const styles = {
 const Chat = () => {
   const [message, setMessage] = useState('')
   const [bullishValue, setBullishValue] = useState(true)
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'info' })
 
-  const { gun, getMessages, state } = useContext(GunContext)
+  const gunCtx = useContext(GunContext)
+  const gun = gunCtx?.gun
+  const getMessages = gunCtx?.getMessages
+  const state = gunCtx?.state || { messages: [] }
 
   useEffect(() => {
-    getMessages('GUN_REF_7')
+    if (getMessages) getMessages('GUN_REF_7')
   }, [])
 
   const formattedMessagesArray = () => {
+    if (!state?.messages) return []
     const uniqueArray = state.messages.filter((value, index) => {
       const _value = JSON.stringify(value)
 
@@ -44,15 +50,15 @@ const Chat = () => {
         })
       )
     })
-    console.log(uniqueArray)
     return uniqueArray
   }
 
   const sendMessage = () => {
     if (message.trim() === '') return
-
-    // const messagesRef = gun.get('GUN_REF')
-    // const messagesRef = gun.get("GUN_REF_2")
+    if (!gun) {
+      setToast({ visible: true, message: 'Chat service is temporarily unavailable', type: 'info' })
+      return
+    }
 
     const messagesRef = gun.get('GUN_REF_7')
 
@@ -65,8 +71,6 @@ const Chat = () => {
       createdAt: Date().substring(4, 11),
       messageId: Date.now(),
     }
-
-    console.log(newMessage)
 
     messagesRef.set(newMessage)
     setMessage('')
@@ -157,8 +161,14 @@ const Chat = () => {
             content={message.content}
             likes='2.7K'
             comments='19K'
-          />
-        ))}
+          />        )
+      )}
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        visible={toast.visible}
+        onClose={() => setToast({ ...toast, visible: false })}
+      />
     </>
   )
 }
